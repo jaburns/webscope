@@ -10,7 +10,7 @@ print_html_decl() {
 }
 
 print_new_c_file() {
-    sed "/$PAGE_HTML_DECL/!p;//q" webscope.c
+    sed -n "/$PAGE_HTML_DECL/!p;//q" webscope.c
     print_html_decl
     sed "1,/$PAGE_HTML_DECL/d" webscope.c
 }
