@@ -1,6 +1,7 @@
 #include "webscope.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -15,6 +16,7 @@
     #include <sys/socket.h>
     #include <arpa/inet.h>
     #include <fcntl.h>
+    #define INVALID_SOCKET (-1)
     typedef int socket_handle;
 #endif
 
@@ -127,7 +129,7 @@ static char *allocate_http_response(const char *body)
     int buffer_size = sizeof(HEADERS) + 16 + body_len;
 
     char *response = malloc(buffer_size);
-    sprintf_s(response, buffer_size, "%s%u\n\n%s", HEADERS, body_len, body);
+    snprintf(response, buffer_size, "%s%u\n\n%s", HEADERS, body_len, body);
 
     return response;
 }
