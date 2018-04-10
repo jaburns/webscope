@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+cd "$(dirname "${BASH_SOURCE[0]}")"
+set -e
+
+PAGE_HTML_DECL='static const char PAGE_HTML'
+
+print_html_decl() {
+    local html="$(sed 's/^[ \t]*//;s/[ \t]*$//;s/"/\\"/g' webscope.html | tr -d '\r\n')"
+    echo "$PAGE_HTML_DECL[] = \"$html\";"
+}
+
+print_new_c_file() {
+    sed "/$PAGE_HTML_DECL/!p;//q" webscope.c
+    print_html_decl
+    sed "1,/$PAGE_HTML_DECL/d" webscope.c
+}
+
+print_new_c_file > tmp.c
+mv tmp.c webscope.c

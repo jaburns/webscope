@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+    <body>
+        <div>
+            <p id="response">{}</p>
+            <button id="post">Send POST</button>
+        </div>
+        <script>
+            document.getElementById('post').onclick = () => {
+                fetch(window.location.href, {
+                    method: 'post',
+                    body: 'Posting from JS'
+                })
+                .then(response => response.text())
+                .then(body => document.getElementById('response').innerText = body);
+            };
+        </script>
+    </body>
+</html>
