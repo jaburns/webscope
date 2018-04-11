@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27428.2015
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "editlive", "editlive.vcxproj", "{AEC70A84-A858-4AFC-934E-13E8494C146E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "webscope", "webscope.vcxproj", "{AEC70A84-A858-4AFC-934E-13E8494C146E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
