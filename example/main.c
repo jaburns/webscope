@@ -17,13 +17,21 @@ static void sleep_millis(uint32_t millis)
 int main(int argc, char **argv)
 {
     webscope_open(1337);
-    printf("Listening on localhost:1337...");
+    printf("Listening on localhost:1337...\n");
 
     for (unsigned int counter = 0; ; counter++)
     {
         webscope_update();
 
-        printf("%u\t%f\n", counter, webscope_value("gravity", 1.0f, 0.0f, 2.0f));
+        float gravity = webscope_value("Gravity", 0.5f, 0.0f, 2.0f);
+
+        if (gravity < 1.0f) {
+            float featheriness = webscope_value("Featheriness", 0.0f, -100.0f, 100.0f);
+            printf("%u\t Low gravity: %f\t\tFeatheriness: %f\n", counter, gravity, featheriness);
+        } else {
+            float crushingness = webscope_value("Crushingness", 0.0f, -100.0f, 100.0f);
+            printf("%u\tHigh gravity: %f\t\tCrushingness: %f\n", counter, gravity, crushingness);
+        }
 
         fflush(stdout);
         sleep_millis(100);

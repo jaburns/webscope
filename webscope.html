@@ -1,19 +1,53 @@
 <!DOCTYPE html>
 <html>
     <body>
-        <div>
-            <p id="response">{}</p>
-            <button id="post">Send POST</button>
+        <div id="valueList">
         </div>
         <script>
-            document.getElementById('post').onclick = () => {
-                fetch(window.location.href, {
-                    method: 'post',
-                    body: 'Posting from JS'
-                })
-                .then(response => response.text())
-                .then(body => document.getElementById('response').innerText = body);
+
+            const valueList = document.getElementById('valueList');
+            const valueMap = {};
+
+            const getPostBody = () => {
+                let result = '';
+                for (let k in valueMap) {
+                    result += k + '=' + valueMap[k].value + ';';
+                }
+                return result;
             };
+
+            const addValueConfigIfNew = valueConfig => {
+                const labelAndValues = valueConfig.split('=');
+                const label = labelAndValues[0];
+
+                if (valueMap[label]) return;
+
+                const values = labelAndValues[1].split(':');
+
+                valueMap[label] = {
+                    value: values[0],
+                    defaultValue: values[0],
+                    min: values[1],
+                    max: values[2]
+                };
+            };
+
+            const parseResponseBody = body => {
+                const valueConfigSet = body.split(';');
+                valueConfigSet.pop();
+                valueConfigSet.forEach(addValueConfigIfNew);
+                console.log(valueMap);
+            };
+
+            const updateLoop = () =>
+                fetch(window.location.href, { method: 'post', body: getPostBody() })
+                    .then(response => response.text())
+                    .then(parseResponseBody);
+                    /*.catch(e => { console.log(e); clearInterval(updateInterval) });*/
+                    /* TODO should only clearInterval if many failed fetches occur in a row */
+
+            const updateInterval = setInterval(updateLoop, 100);
+
         </script>
     </body>
 </html>

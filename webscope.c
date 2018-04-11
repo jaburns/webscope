@@ -20,10 +20,10 @@
     typedef int socket_handle;
 #endif
 
-static const char PAGE_HTML[] = "<!DOCTYPE html><html><body><div><p id=\"response\">{}</p><button id=\"post\">Send POST</button></div><script>document.getElementById('post').onclick = () => {fetch(window.location.href, {method: 'post',body: 'Posting from JS'}).then(response => response.text()).then(body => document.getElementById('response').innerText = body);};</script></body></html>";
+#define MAX_HTTP_MESSAGE  65536
+#define MAX_VALUE_LABEL     256
 
-static const int MAX_HTTP_MESSAGE = 65536;
-static const int MAX_VALUE_LABEL = 256;
+static const char PAGE_HTML[] = "<!DOCTYPE html><html><body><div id=\"valueList\"></div><script>const valueList = document.getElementById('valueList');const valueMap = {};const getPostBody = () => {let result = '';for (let k in valueMap) {result += k + '=' + valueMap[k].value + ';';}return result;};const addValueConfigIfNew = valueConfig => {const labelAndValues = valueConfig.split('=');const label = labelAndValues[0];if (valueMap[label]) return;const values = labelAndValues[1].split(':');valueMap[label] = {value: values[0],defaultValue: values[0],min: values[1],max: values[2]};};const parseResponseBody = body => {const valueConfigSet = body.split(';');valueConfigSet.pop();valueConfigSet.forEach(addValueConfigIfNew);console.log(valueMap);};const updateLoop = () =>fetch(window.location.href, { method: 'post', body: getPostBody() }).then(response => response.text()).then(parseResponseBody).catch(e => { console.log(e); clearInterval(updateInterval) });const updateInterval = setInterval(updateLoop, 100);</script></body></html>";
 
 struct WebscopeValue
 {
@@ -119,19 +119,20 @@ static void close_socket(socket_handle socket)
     #endif
 }
 
-static bool is_get_request(const char *request)
+static bool is_post_request(const char *request)
 {
-    char compare[4] = "\0\0\0\0";
-    memcpy(compare, request, 3);
-    return strcmp(compare, "GET") == 0;
+    char compare[] = "\0\0\0\0\0";
+    memcpy(compare, request, 4);
+    return strcmp(compare, "POST") == 0;
 }
 
-static char *allocate_http_response(const char *body)
+static const char *allocate_http_response(const char *body)
 {
+    static const int MAX_EXTRA_CONTENT = 16;
     static const char HEADERS[] = "HTTP 1.1/200 OK\nContent-Length: ";
 
     int body_len = strnlen(body, MAX_HTTP_MESSAGE);
-    int buffer_size = sizeof(HEADERS) + 16 + body_len;
+    int buffer_size = sizeof(HEADERS) + MAX_EXTRA_CONTENT + body_len;
 
     char *response = malloc(buffer_size);
     snprintf(response, buffer_size, "%s%u\n\n%s", HEADERS, body_len, body);
@@ -139,20 +140,62 @@ static char *allocate_http_response(const char *body)
     return response;
 }
 
+static void parse_posted_value(struct WebscopeState *state, const char *value_set, int value_set_len)
+{
+    char buffer[MAX_VALUE_LABEL + 1];
+
+    const char *equals_loc = strchr(value_set, '=');
+    int label_len = equals_loc - value_set;
+
+    if (label_len >= value_set_len || label_len > MAX_VALUE_LABEL) return;
+
+    memcpy(buffer, value_set, label_len);
+    buffer[label_len] = 0;
+
+    struct WebscopeValue *value = find_value(state, buffer);
+
+    if (value == NULL) return;
+
+    int value_len = value_set_len - label_len - 1;
+    memcpy(buffer, equals_loc + 1, value_len);
+    buffer[value_len] = 0;
+
+    value->value = strtof(buffer, NULL);
+}
+
+static void handle_post(struct WebscopeState *state, const char *request)
+{
+    const char *body = strrchr(request, '\n');
+    if (body == NULL) return;
+
+    body++;
+
+    while (true) {
+        const char *next_sep = strchr(body, ';');
+        if (next_sep == NULL) break;
+
+        parse_posted_value(state, body, next_sep - body);
+
+        body = next_sep + 1;
+    }
+}
+
 static char *handle_post_and_allocate_response(struct WebscopeState *state, const char *request)
 {
+    handle_post(state, request);
+
     int buffer_len = state->value_count * (MAX_VALUE_LABEL + 3 * 16);
     char *buffer = malloc(buffer_len);
 
     int buffer_pos = 0;
     for (int i = 0; i < state->value_count; ++i) {
-        buffer_pos = snprintf(
+        buffer_pos += snprintf(
             buffer + buffer_pos, buffer_len - buffer_pos, "%s=%f:%f:%f;",
             state->values[i].label, state->values[i].value, state->values[i].min, state->values[i].max
         );
     }
     
-    char *response = allocate_http_response(buffer);
+    const char *response = allocate_http_response(buffer);
 
     free(buffer);
 
@@ -211,14 +254,14 @@ void webscope_update()
         memset(buffer, 0, sizeof(buffer));
         recv(client, buffer, sizeof(buffer) - 1, 0);
 
-        char *response = is_get_request(buffer)
-            ? allocate_http_response(PAGE_HTML)
-            : handle_post_and_allocate_response(g_state, buffer);
+        const char *response = is_post_request(buffer)
+            ? handle_post_and_allocate_response(g_state, buffer)
+            : allocate_http_response(PAGE_HTML);
 
         int response_len = strnlen(response, MAX_HTTP_MESSAGE);
         send(client, response, response_len, 0);
-        free(response);
 
+        free(response);
         close_socket(client);
     }
 }
