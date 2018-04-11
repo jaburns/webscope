@@ -23,12 +23,13 @@
 #define MAX_HTTP_MESSAGE  65536
 #define MAX_VALUE_LABEL     256
 
-static const char PAGE_HTML[] = "<!DOCTYPE html><html><body><div id=\"valueList\"></div><script>const valueList = document.getElementById('valueList');const valueMap = {};const getPostBody = () => {let result = '';for (let k in valueMap) {result += k + '=' + valueMap[k].value + ';';}return result;};const addValueConfigIfNew = valueConfig => {const labelAndValues = valueConfig.split('=');const label = labelAndValues[0];if (valueMap[label]) return;const values = labelAndValues[1].split(':');valueMap[label] = {value: values[0],defaultValue: values[0],min: values[1],max: values[2]};};const parseResponseBody = body => {const valueConfigSet = body.split(';');valueConfigSet.pop();valueConfigSet.forEach(addValueConfigIfNew);console.log(valueMap);};const updateLoop = () =>fetch(window.location.href, { method: 'post', body: getPostBody() }).then(response => response.text()).then(parseResponseBody).catch(e => { console.log(e); clearInterval(updateInterval) });const updateInterval = setInterval(updateLoop, 100);</script></body></html>";
+static const char PAGE_HTML[] = "<!DOCTYPE html><html><body><template id=\"valueItem\"><p><span class=\"valueLabel\"></span><input class=\"slider\" type=\"range\" /></p></template><div id=\"valueList\"></div><script>const valueList = [];const updateLoop = () =>fetch(window.location.href, { method: 'post', body: getPostBody() }).then(response => response.text()).then(parseResponseBody);const updateInterval = setInterval(updateLoop, 100);const getPostBody = () =>valueList.map(v => `${v.label}=${v.value};`).join('');const parseResponseBody = body => {const valueConfigSet = body.split(';');valueConfigSet.pop();valueList.forEach(x => x.active = false);valueConfigSet.forEach(receiveValueConfig);valueList.forEach(x => updateValue(x));};const receiveValueConfig = valueConfig => {const labelAndValues = valueConfig.split('=');const label = labelAndValues[0];const match = valueList.filter(x => x.label === label)[0];if (match) {match.active = true;return;}pushNewValue(label, labelAndValues[1].split(':').map(parseFloat));};const pushNewValue = (label, config) => {const newValue = {label: label,value: config[0],defaultValue: config[0],min: config[1],max: config[2],active: true};initElements(newValue);valueList.push(newValue);};const initElements = value => {const newNode = document.querySelector('#valueItem').content.cloneNode(true);newNode.querySelector('.valueLabel').innerText = value.label;value.slider = newNode.querySelector('.slider');value.slider.min = value.min;value.slider.max = value.max;value.slider.step = (value.max - value.min) / 1000;value.slider.value = value.defaultValue;document.querySelector('#valueList').appendChild(newNode);};const updateValue = value => {value.value = value.slider.value;/*TODO style inactive, add reset to default button, add css */if (!value.active) console.log(\"INACTIVE: \" + value.label);};</script></body></html>";
 
 struct WebscopeValue
 {
     const char *label;
     float value, min, max;
+    bool active;
 };
 
 struct WebscopeState
@@ -182,17 +183,24 @@ static void handle_post(struct WebscopeState *state, const char *request)
 
 static char *handle_post_and_allocate_response(struct WebscopeState *state, const char *request)
 {
+    static const int MAX_FLOAT_SERIALIZED_SIZE = 16;
+
     handle_post(state, request);
 
-    int buffer_len = state->value_count * (MAX_VALUE_LABEL + 3 * 16);
+    int buffer_len = state->value_count * (MAX_VALUE_LABEL + 3 * MAX_FLOAT_SERIALIZED_SIZE);
     char *buffer = malloc(buffer_len);
+    buffer[0] = 0;
 
     int buffer_pos = 0;
     for (int i = 0; i < state->value_count; ++i) {
+        if (! state->values[i].active) continue;
+
         buffer_pos += snprintf(
             buffer + buffer_pos, buffer_len - buffer_pos, "%s=%f:%f:%f;",
             state->values[i].label, state->values[i].value, state->values[i].min, state->values[i].max
         );
+
+        state->values[i].active = false;
     }
     
     const char *response = allocate_http_response(buffer);
@@ -276,8 +284,10 @@ float webscope_value(const char *label, float default_value, float min, float ma
     struct WebscopeValue *value = find_value(g_state, label);
 
     if (value == 0) {
-        value = push_value(g_state, (struct WebscopeValue){ label, default_value, min, max });
+        value = push_value(g_state, (struct WebscopeValue){ label, default_value, min, max, true });
     }
+
+    value->active = true;
 
     return value->value;
 }

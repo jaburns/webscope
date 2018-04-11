@@ -1,52 +1,81 @@
 <!DOCTYPE html>
 <html>
     <body>
+        <template id="valueItem">
+            <p>
+                <span class="valueLabel"></span>
+                <input class="slider" type="range" />
+            </p>
+        </template>
         <div id="valueList">
         </div>
         <script>
 
-            const valueList = document.getElementById('valueList');
-            const valueMap = {};
-
-            const getPostBody = () => {
-                let result = '';
-                for (let k in valueMap) {
-                    result += k + '=' + valueMap[k].value + ';';
-                }
-                return result;
-            };
-
-            const addValueConfigIfNew = valueConfig => {
-                const labelAndValues = valueConfig.split('=');
-                const label = labelAndValues[0];
-
-                if (valueMap[label]) return;
-
-                const values = labelAndValues[1].split(':');
-
-                valueMap[label] = {
-                    value: values[0],
-                    defaultValue: values[0],
-                    min: values[1],
-                    max: values[2]
-                };
-            };
-
-            const parseResponseBody = body => {
-                const valueConfigSet = body.split(';');
-                valueConfigSet.pop();
-                valueConfigSet.forEach(addValueConfigIfNew);
-                console.log(valueMap);
-            };
+            const valueList = [];
 
             const updateLoop = () =>
                 fetch(window.location.href, { method: 'post', body: getPostBody() })
                     .then(response => response.text())
                     .then(parseResponseBody);
-                    /*.catch(e => { console.log(e); clearInterval(updateInterval) });*/
-                    /* TODO should only clearInterval if many failed fetches occur in a row */
 
             const updateInterval = setInterval(updateLoop, 100);
+
+            const getPostBody = () =>
+                valueList
+                    .map(v => `${v.label}=${v.value};`)
+                    .join('');
+
+            const parseResponseBody = body => {
+                const valueConfigSet = body.split(';');
+                valueConfigSet.pop();
+                valueList.forEach(x => x.active = false);
+                valueConfigSet.forEach(receiveValueConfig);
+                valueList.forEach(x => updateValue(x));
+            };
+
+            const receiveValueConfig = valueConfig => {
+                const labelAndValues = valueConfig.split('=');
+                const label = labelAndValues[0];
+                const match = valueList.filter(x => x.label === label)[0];
+
+                if (match) {
+                    match.active = true;
+                } else {
+                    pushNewValue(label, labelAndValues[1].split(':').map(parseFloat));
+                }
+            };
+
+            const pushNewValue = (label, config) => {
+                const newValue = {
+                    label: label,
+                    value: config[0],
+                    defaultValue: config[0],
+                    min: config[1],
+                    max: config[2],
+                    active: true
+                };
+                initElements(newValue);
+                valueList.push(newValue);
+            };
+
+            const initElements = value => {
+                const newNode = document.querySelector('#valueItem').content.cloneNode(true);
+                newNode.querySelector('.valueLabel').innerText = value.label;
+
+                value.slider = newNode.querySelector('.slider');
+                value.slider.min = value.min;
+                value.slider.max = value.max;
+                value.slider.step = (value.max - value.min) / 1000;
+                value.slider.value = value.defaultValue;
+
+                document.querySelector('#valueList').appendChild(newNode);
+            };
+
+            const updateValue = value => {
+                value.value = value.slider.value;
+                /*TODO accumulate inactive for multiple updates, style inactive, add reset to default button, style all*/
+                if (!value.active) console.log("INACTIVE: " + value.label);
+            };
 
         </script>
     </body>
