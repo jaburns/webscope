@@ -19,13 +19,13 @@ int main(int argc, char **argv)
     webscope_open(1337);
     printf("Listening on localhost:1337...");
 
-    while (1) {
+    for (unsigned int counter = 0; ; counter++)
+    {
         webscope_update();
 
-        printf(".");
+        printf("%u\t%f\n", counter, webscope_value("gravity", 1.0f, 0.0f, 2.0f));
+
         fflush(stdout);
-    //  printf("%f ", webscope_value("gravity", 1.0f, 0.0f, 2.0f));
-    //
         sleep_millis(100);
     }
 

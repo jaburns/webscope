@@ -22,7 +22,8 @@
 
 static const char PAGE_HTML[] = "<!DOCTYPE html><html><body><div><p id=\"response\">{}</p><button id=\"post\">Send POST</button></div><script>document.getElementById('post').onclick = () => {fetch(window.location.href, {method: 'post',body: 'Posting from JS'}).then(response => response.text()).then(body => document.getElementById('response').innerText = body);};</script></body></html>";
 
-static const int MAX_STRING = 65536;
+static const int MAX_HTTP_MESSAGE = 65536;
+static const int MAX_VALUE_LABEL = 256;
 
 struct WebscopeValue
 {
@@ -30,37 +31,42 @@ struct WebscopeValue
     float value, min, max;
 };
 
-static int s_value_count = 0;
-static struct WebscopeValue *s_values = NULL;
-static socket_handle s_socket_handle = INVALID_SOCKET;
-
-static struct WebscopeValue *find_value(const char *label)
+struct WebscopeState
 {
-    for (int i = 0; i < s_value_count; ++i) {
-        if (strcmp(label, s_values[i].label) == 0) {
-            return &s_values[i];
+    int value_count;
+    struct WebscopeValue *values;
+    socket_handle socket_handle;
+};
+
+static struct WebscopeState *g_state = NULL;
+
+static struct WebscopeValue *find_value(const struct WebscopeState *state, const char *label)
+{
+    for (int i = 0; i < state->value_count; ++i) {
+        if (strcmp(label, state->values[i].label) == 0) {
+            return &state->values[i];
         }
     }
 
     return NULL;
 }
 
-static struct WebscopeValue *push_value(struct WebscopeValue value)
+static struct WebscopeValue *push_value(struct WebscopeState *state, struct WebscopeValue value)
 {
-    struct WebscopeValue *old_values = s_values;
-    struct WebscopeValue *new_values = malloc(sizeof(struct WebscopeValue) * (s_value_count + 1));
+    struct WebscopeValue *old_values = state->values;
+    struct WebscopeValue *new_values = malloc(sizeof(struct WebscopeValue) * (state->value_count + 1));
 
     if (old_values != NULL) {
-        memcpy(new_values, old_values, sizeof(struct WebscopeValue) * s_value_count);
+        memcpy(new_values, old_values, sizeof(struct WebscopeValue) * state->value_count);
         free(old_values);
     }
 
-    new_values[s_value_count] = value;
+    new_values[state->value_count] = value;
 
-    s_values = new_values;
-    s_value_count++;
+    state->values = new_values;
+    state->value_count++;
 
-    return &new_values[s_value_count - 1];
+    return &new_values[state->value_count - 1];
 }
 
 static socket_handle open_socket(uint16_t port)
@@ -108,7 +114,6 @@ static void close_socket(socket_handle socket)
 {
     #ifdef _WIN32
         closesocket(socket);
-        WSACleanup();
     #else
         close(socket);
     #endif
@@ -116,16 +121,16 @@ static void close_socket(socket_handle socket)
 
 static bool is_get_request(const char *request)
 {
-    char buf[4] = "\0\0\0\0";
-    memcpy(buf, request, 3);
-    return strcmp(buf, "GET") == 0;
+    char compare[4] = "\0\0\0\0";
+    memcpy(compare, request, 3);
+    return strcmp(compare, "GET") == 0;
 }
 
 static char *allocate_http_response(const char *body)
 {
     static const char HEADERS[] = "HTTP 1.1/200 OK\nContent-Length: ";
 
-    int body_len = strnlen(body, MAX_STRING);
+    int body_len = strnlen(body, MAX_HTTP_MESSAGE);
     int buffer_size = sizeof(HEADERS) + 16 + body_len;
 
     char *response = malloc(buffer_size);
@@ -134,42 +139,61 @@ static char *allocate_http_response(const char *body)
     return response;
 }
 
-static char *handle_post_and_allocate_response(const char *request)
+static char *handle_post_and_allocate_response(struct WebscopeState *state, const char *request)
 {
-    printf(request);
-    return allocate_http_response("Hello from POST handler.");
+    int buffer_len = state->value_count * (MAX_VALUE_LABEL + 3 * 16);
+    char *buffer = malloc(buffer_len);
+
+    int buffer_pos = 0;
+    for (int i = 0; i < state->value_count; ++i) {
+        buffer_pos = snprintf(
+            buffer + buffer_pos, buffer_len - buffer_pos, "%s=%f:%f:%f;",
+            state->values[i].label, state->values[i].value, state->values[i].min, state->values[i].max
+        );
+    }
+    
+    char *response = allocate_http_response(buffer);
+
+    free(buffer);
+
+    return response;
 }
 
 void webscope_open(uint16_t port)
 {
-    if (s_socket_handle != INVALID_SOCKET) {
+    if (g_state != NULL) {
         printf("ERROR: Called webscope_open while session was already open.");
         exit(1);
     }
-
-    s_socket_handle = open_socket(port);
+    
+    g_state = malloc(sizeof(struct WebscopeState));
+    g_state->value_count = 0;
+    g_state->values = NULL;
+    g_state->socket_handle = open_socket(port);
 }
 
 void webscope_close()
 {
-    if (s_socket_handle == INVALID_SOCKET) {
+    if (g_state == NULL) {
         printf("ERROR: Called webscope_close while session was already closed.");
         exit(1);
     }
 
-    close_socket(s_socket_handle);
-    s_socket_handle = INVALID_SOCKET;
+    close_socket(g_state->socket_handle);
 
-    if (s_value_count > 0) {
-        free(s_values);
-        s_values = NULL;
-        s_value_count = 0;
+    if (g_state->value_count > 0) {
+        free(g_state->values);
     }
+    free(g_state);
+
+    #ifdef _WIN32
+        WSACleanup();
+    #endif
 }
 
 void webscope_update()
 {
-    if (s_socket_handle == INVALID_SOCKET) {
+    if (g_state == NULL) {
         printf("ERROR: Called webscope_update while session was closed.");
         exit(1);
     }
@@ -180,7 +204,8 @@ void webscope_update()
 
     while (true)
     {
-        socket_handle client = accept(s_socket_handle, (struct sockaddr*)&remaddr, &slen);
+        socket_handle client = accept(g_state->socket_handle, (struct sockaddr*)&remaddr, &slen);
+
         if (client == INVALID_SOCKET) break;
 
         memset(buffer, 0, sizeof(buffer));
@@ -188,26 +213,27 @@ void webscope_update()
 
         char *response = is_get_request(buffer)
             ? allocate_http_response(PAGE_HTML)
-            : handle_post_and_allocate_response(buffer);
+            : handle_post_and_allocate_response(g_state, buffer);
 
-        int response_len = strnlen(response, MAX_STRING);
+        int response_len = strnlen(response, MAX_HTTP_MESSAGE);
         send(client, response, response_len, 0);
         free(response);
 
-        #ifdef _WIN32
-            closesocket(client);
-        #else
-            close(client);
-        #endif
+        close_socket(client);
     }
 }
 
 float webscope_value(const char *label, float default_value, float min, float max)
 {
-    struct WebscopeValue *value = find_value(label);
+    if (g_state == NULL) {
+        printf("ERROR: Called webscope_value while session was closed.");
+        exit(1);
+    }
+
+    struct WebscopeValue *value = find_value(g_state, label);
 
     if (value == 0) {
-        value = push_value((struct WebscopeValue){ label, default_value, min, max });
+        value = push_value(g_state, (struct WebscopeValue){ label, default_value, min, max });
     }
 
     return value->value;
