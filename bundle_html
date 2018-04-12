@@ -4,31 +4,35 @@ set -e
 
 PAGE_HTML_DECL='static const char PAGE_HTML'
 
-trim_lines_and_remove_newlines() {
-    sed 's/^[ \t]*//;s/[ \t]*$//;s/"/\\"/g' \
-        | tr -d '\r\n'
+trim_and_remove_newlines() {
+    sed 's/^[ \t]*//;s/[ \t]*$//;s/"/\\"/g' | tr -d '\r\n'
 }
 
-remove_non_string_whitespace() {
-    sed 's/(\".*\")|\s*/\1/g'
+print_new_c_file_with_html() {
+    sed -n "/$PAGE_HTML_DECL/!p;//q" "$1"
+    echo "$PAGE_HTML_DECL[] = \"$2\";"
+    sed "1,/$PAGE_HTML_DECL/d" "$1"
 }
 
-print_minified_script() {
-    cat "$1" | sed 's/(\".*\")|\s*/\1/g' # remove_non_string_whitespace
+replace_token_with_file() {
+    while read line; do
+        if [[ "$line" = *"$1"* ]]; then
+            cat "$2"
+        else
+            echo "$line"
+        fi
+    done
+    echo "$line"
 }
 
-print_html_decl() {
-    local html="$(sed 's/^[ \t]*//;s/[ \t]*$//;s/"/\\"/g' webscope.html | tr -d '\r\n')"
-    echo "$PAGE_HTML_DECL[] = \"$html\";"
+main() {
+    local page_bundle="$(cat webscope.html \
+        | replace_token_with_file __CSS__ 'webscope.css' \
+        | replace_token_with_file __JS__ 'webscope.js' \
+        | trim_and_remove_newlines)"
+
+    print_new_c_file_with_html 'webscope.c' "$page_bundle" > tmp.c
+    mv tmp.c webscope.c
 }
 
-print_new_c_file() {
-    sed -n "/$PAGE_HTML_DECL/!p;//q" webscope.c
-    print_html_decl
-    sed "1,/$PAGE_HTML_DECL/d" webscope.c
-}
-
-print_minified_script webscope.js
-
-# print_new_c_file > tmp.c
-# mv tmp.c webscope.c
+main
