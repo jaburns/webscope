@@ -1,0 +1,6 @@
+.item:not(.active) {
+    background-color: orangered;
+}
+.item.active {
+    background-color: greenyellow;
+}

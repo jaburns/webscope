@@ -154,7 +154,10 @@
     <ClInclude Include="..\webscope.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\bundle_html" />
+    <None Include="..\webscope.css" />
     <None Include="..\webscope.html" />
+    <None Include="..\webscope.js" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

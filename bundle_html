@@ -4,6 +4,19 @@ set -e
 
 PAGE_HTML_DECL='static const char PAGE_HTML'
 
+trim_lines_and_remove_newlines() {
+    sed 's/^[ \t]*//;s/[ \t]*$//;s/"/\\"/g' \
+        | tr -d '\r\n'
+}
+
+remove_non_string_whitespace() {
+    sed 's/(\".*\")|\s*/\1/g'
+}
+
+print_minified_script() {
+    cat "$1" | sed 's/(\".*\")|\s*/\1/g' # remove_non_string_whitespace
+}
+
 print_html_decl() {
     local html="$(sed 's/^[ \t]*//;s/[ \t]*$//;s/"/\\"/g' webscope.html | tr -d '\r\n')"
     echo "$PAGE_HTML_DECL[] = \"$html\";"
@@ -15,5 +28,7 @@ print_new_c_file() {
     sed "1,/$PAGE_HTML_DECL/d" webscope.c
 }
 
-print_new_c_file > tmp.c
-mv tmp.c webscope.c
+print_minified_script webscope.js
+
+# print_new_c_file > tmp.c
+# mv tmp.c webscope.c
