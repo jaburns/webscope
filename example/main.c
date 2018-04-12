@@ -17,7 +17,7 @@ static void sleep_millis(uint32_t millis)
 int main(int argc, char **argv)
 {
     webscope_open(1337);
-    printf("Listening on localhost:1337...\n");
+    printf("Listening on port 1337...\n");
 
     for (unsigned int counter = 0; ; counter++)
     {
@@ -33,7 +33,6 @@ int main(int argc, char **argv)
             printf("%u\tHigh gravity: %f\t\tCrushingness: %f\n", counter, gravity, crushingness);
         }
 
-        fflush(stdout);
         sleep_millis(100);
     }
 
