@@ -18,3 +18,6 @@ gcc example/main.c webscope.c && ./a.out
 ```
 ##### Visual Studio on Windows
 - Open and run the `example/webscope.sln` solution.
+
+### Making changes to the front-end
+The HTML/JS/CSS is embedded directly in `webscope.c`. To update the embedded page contents, run the `bundle_html` script from a bash shell. This will combine `webscope.html`, `webscope.css`, and `webscope.js` in to a single line of text and write it to the `PAGE_HTML` constant in `webscope.c`.
