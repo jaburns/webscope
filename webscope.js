@@ -8,7 +8,7 @@ const updateLoop = () =>
 
 const updateInterval = setInterval(updateLoop, 100);
 
-document.querySelector('.show').onclick = () => 
+document.querySelector('.show').onclick = () =>
     document.querySelector('textarea').value = getPostBody();
 
 const getPostBody = () =>
@@ -20,13 +20,12 @@ const parseResponseBody = body => {
     const valueConfigSet = body.split(';');
     valueConfigSet.pop();
 
-    valueList.forEach(x => {
-        if (x.active > 0) x.active--;
-    });
+    valueList.forEach(x => x.active = false);
 
     valueConfigSet.forEach(receiveValueConfig);
 
-    valueList.forEach(updateValueActive);
+    valueList.forEach(value =>
+        value.element.classList[value.active ? 'add' : 'remove']('active'));
 };
 
 const receiveValueConfig = valueConfig => {
@@ -35,7 +34,7 @@ const receiveValueConfig = valueConfig => {
     const match = valueList.filter(x => x.label === label)[0];
 
     if (match) {
-        match.active = 2;
+        match.active = true;
     } else {
         pushNewValue(label, labelAndValues[1].split(':').map(parseFloat));
     }
@@ -80,8 +79,4 @@ const initElements = value => {
 
     const list = document.querySelector('#list');
     list.insertBefore(newNode, list.childNodes[list.childNodes.length - 1]);
-};
-
-const updateValueActive = value => {
-    value.element.classList[value.active ? 'add' : 'remove']('active');
 };
