@@ -4,8 +4,8 @@ set -e
 
 PAGE_HTML_DECL='static const char PAGE_HTML'
 
-trim_and_remove_newlines() {
-    sed 's/^[ \t]*//;s/[ \t]*$//;s/"/\\"/g' | tr -d '\r\n'
+trim_spaces_fix_quotes_join_lines() {
+    sed 's/^ *//;s/ *$//;s/"/\\"/g' | tr -d '\r\n'
 }
 
 print_new_c_file_with_html() {
@@ -29,7 +29,7 @@ main() {
     local page_bundle="$(cat webscope.html \
         | replace_token_with_file __CSS__ 'webscope.css' \
         | replace_token_with_file __JS__ 'webscope.js' \
-        | trim_and_remove_newlines)"
+        | trim_spaces_fix_quotes_join_lines)"
 
     print_new_c_file_with_html 'webscope.c' "$page_bundle" > tmp.c
     mv tmp.c webscope.c

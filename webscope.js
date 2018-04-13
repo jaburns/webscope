@@ -1,4 +1,3 @@
-
 const valueList = [];
 
 const updateLoop = () =>
