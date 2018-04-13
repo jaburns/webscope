@@ -8,6 +8,9 @@ const updateLoop = () =>
 
 const updateInterval = setInterval(updateLoop, 100);
 
+document.querySelector('.show').onclick = () => 
+    document.querySelector('textarea').value = getPostBody();
+
 const getPostBody = () =>
     valueList
         .map(v => `${v.label}=${v.value};`)
@@ -16,8 +19,13 @@ const getPostBody = () =>
 const parseResponseBody = body => {
     const valueConfigSet = body.split(';');
     valueConfigSet.pop();
-    valueList.forEach(x => x.active = false);
+
+    valueList.forEach(x => {
+        if (x.active > 0) x.active--;
+    });
+
     valueConfigSet.forEach(receiveValueConfig);
+
     valueList.forEach(updateValueActive);
 };
 
@@ -27,7 +35,7 @@ const receiveValueConfig = valueConfig => {
     const match = valueList.filter(x => x.label === label)[0];
 
     if (match) {
-        match.active = true;
+        match.active = 2;
     } else {
         pushNewValue(label, labelAndValues[1].split(':').map(parseFloat));
     }
@@ -70,7 +78,8 @@ const initElements = value => {
 
     value.element = newNode.querySelector('.item');
 
-    document.querySelector('#list').appendChild(newNode);
+    const list = document.querySelector('#list');
+    list.insertBefore(newNode, list.childNodes[list.childNodes.length - 1]);
 };
 
 const updateValueActive = value => {

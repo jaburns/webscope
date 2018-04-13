@@ -7,15 +7,21 @@
     </head>
     <body>
         <template id="itemTemplate">
-            <p class="item">
-                <span class="label"></span>
-                <input class="slider" type="range" />
-                <input class="text" type="text" />
-                <button class="reset">Reset</button>
-            </p>
+            <tr class="item">
+                <td class="label"></td>
+                <td><input class="slider" type="range" /></td>
+                <td><input class="text" type="text" /></td>
+                <td><button class="reset">Reset</button></td>
+            </tr>
         </template>
-        <div id="list">
-        </div>
+        <table id="list">
+            <tr>
+                <td colspan="4">
+                    <button class="show">Print All Values</button>
+                    <textarea></textarea>
+                </td>
+            </tr>
+        </table>
         <script>
             __JS__
         </script>

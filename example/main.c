@@ -16,8 +16,10 @@ static void sleep_millis(uint32_t millis)
 
 int main(int argc, char **argv)
 {
+    printf("Press return to start listening on port 1337...\n");
+    getchar();
+
     webscope_open(1337);
-    printf("Listening on port 1337...\n");
 
     for (unsigned int counter = 0; ; counter++)
     {
@@ -27,10 +29,10 @@ int main(int argc, char **argv)
 
         if (gravity < 1.0f) {
             float featheriness = webscope_value("Featheriness", 0.0f, -100.0f, 100.0f);
-            printf("%u\t Low gravity: %f\t\tFeatheriness: %f\n", counter, gravity, featheriness);
+            printf("%u\t Low gravity:  %f   Featheriness:  %f\n", counter, gravity, featheriness);
         } else {
             float crushingness = webscope_value("Crushingness", 0.0f, -100.0f, 100.0f);
-            printf("%u\tHigh gravity: %f\t\tCrushingness: %f\n", counter, gravity, crushingness);
+            printf("%u\tHigh gravity:  %f   Crushingness:  %f\n", counter, gravity, crushingness);
         }
 
         sleep_millis(100);

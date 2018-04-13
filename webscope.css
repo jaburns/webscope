@@ -1,6 +1,53 @@
-.item:not(.active) {
-    background-color: orangered;
+html, body {
+    background-color: #292929;
+    color: #ababab;
+    font-family: monospace;
+    padding-top: 10px;
 }
-.item.active {
-    background-color: greenyellow;
+table {
+    margin: auto;
+}
+td {
+    padding: 1px 5px 1px 5px;
+}
+.label {
+    padding-left: 10px;
+    padding-right: 5px;
+    text-align: right;
+}
+.show {
+    width: 100%;
+}
+.slider { 
+    width: 200px;
+}
+.text {
+    background-color: #292929;
+    border: 0;
+    font-family: monospace;
+    color: #ababab;
+    width: 60px;
+    padding-left: 3px;
+}
+.item {
+    background-color: #383838
+}
+.item:not(.active) {
+    background-color: #222;
+}
+button {
+    background-color: #484848;
+    color: #ababab;
+    font-family: monospace;
+    border: 0;
+}
+textarea {
+    width: 100%;
+    resize: none;
+    margin-top: 3px;
+    margin-right: 5px;
+    background-color: #222;
+    border: 0;
+    color: #ababab;
+    height: 64px;
 }
