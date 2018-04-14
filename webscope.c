@@ -143,7 +143,7 @@ static const char *allocate_http_response(const char *body)
 
 static void parse_posted_value(struct WebscopeState *state, const char *value_set, int value_set_len)
 {
-    char buffer[MAX_VALUE_LABEL + 1];
+    static char buffer[MAX_VALUE_LABEL + 1];
 
     const char *equals_loc = strchr(value_set, '=');
     int label_len = equals_loc - value_set;
@@ -244,6 +244,8 @@ void webscope_close()
 
 void webscope_update()
 {
+    static char buffer[MAX_HTTP_MESSAGE];
+    
     if (g_state == NULL) {
         printf("ERROR: Called webscope_update while session was closed.");
         exit(1);
@@ -251,16 +253,16 @@ void webscope_update()
 
     struct sockaddr_in remaddr;
     socklen_t slen = sizeof(remaddr);
-    char buffer[1024];
 
     while (true)
     {
         socket_handle client = accept(g_state->socket_handle, (struct sockaddr*)&remaddr, &slen);
-
         if (client == INVALID_SOCKET) break;
 
-        memset(buffer, 0, sizeof(buffer));
-        recv(client, buffer, sizeof(buffer) - 1, 0);
+        int msg_len = recv(client, buffer, sizeof(buffer) - 1, 0);
+        if (msg_len < 0) break;
+        
+        buffer[msg_len] = 0;
 
         const char *response = is_post_request(buffer)
             ? handle_post_and_allocate_response(g_state, buffer)
