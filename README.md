@@ -1,7 +1,8 @@
 ## webscope
 Small dependency-free library for editing values at runtime in a realtime C or C++ program from a browser.
 
-![Demo](https://github.com/jaburns/webscope/raw/master/example/demo.gif)
+![Example](https://github.com/jaburns/webscope/raw/master/gifs/example.gif)
+![Teapots](https://github.com/jaburns/webscope/raw/master/gifs/teapots.gif)
 
 ### Usage
 Simply include `webscope.c` and `webscope.h` in your project. There are no additional dependencies. On Windows the winsock2 lib file is pulled in to the linker through a `#pragma`, and on Linux and OSX the required functions are linked automatically.
