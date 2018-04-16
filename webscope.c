@@ -122,9 +122,7 @@ static void close_socket(socket_handle socket)
 
 static bool is_post_request(const char *request)
 {
-    char compare[] = "\0\0\0\0\0";
-    memcpy(compare, request, 4);
-    return strcmp(compare, "POST") == 0;
+    return strncmp(request, "POST", 4) == 0;
 }
 
 static const char *allocate_http_response(const char *body)
